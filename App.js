@@ -486,6 +486,12 @@ export default function App() {
   const cy = SCREEN_HEIGHT * currentHorizon;
   const timeSec = Date.now() / 1000; // 呼吸と揺れのための時間
 
+  // Web専用の環境光ブレンド（周囲の森の色味にキノコをなじませる）
+  // 昼は少し彩度を落として暖色を足し、夜は暗くして青みを足す
+  const envFilter = isNight 
+    ? 'brightness(0.55) contrast(1.1) sepia(0.4) hue-rotate(180deg)' 
+    : 'brightness(0.9) contrast(1.15) sepia(0.25) saturate(0.85)';
+
   const drawn = itemsRef.current.map((it) => {
     const scale = FOCAL / it.z;
     // 遠く(Z_FAR)から現れるとき、幽霊のように透けるのではなく、
@@ -529,8 +535,10 @@ export default function App() {
                 top: size * 0.88,
                 width: size * 0.5,
                 height: size * 0.15,
-                backgroundColor: 'rgba(0,0,0,0.55)',
+                backgroundColor: 'rgba(0,20,10,0.6)',
                 borderRadius: size * 0.25,
+                // 遠くにあるほど影も薄くする
+                opacity: sprout,
               }}
             />
             <Animated.Image
@@ -545,10 +553,16 @@ export default function App() {
               }}
               resizeMode="contain"
             />
-            {/* キノコ本体に呼吸と揺れを適用 */}
+            {/* キノコ本体に呼吸と揺れ、環境光フィルターを適用 */}
             <Image 
               source={it.src} 
-              style={[styles.fill, { transform: [{ scaleY: breathe }, { rotate: `${sway}deg` }] }]} 
+              style={[
+                styles.fill, 
+                { 
+                  transform: [{ scaleY: breathe }, { rotate: `${sway}deg` }],
+                  filter: envFilter,
+                }
+              ]} 
               resizeMode="contain" 
             />
           </View>
