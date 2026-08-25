@@ -50,7 +50,7 @@ const SCENES = [
 ];
 
 // タイトルの口。閉じる→少し開く→大きく開く を1枚ずつ見せてから寄る
-const FRAME_MS = 420;        // 1枚を見せる時間
+const FRAME_MS = 180;        // 1枚を見せる時間（遅すぎるとカクついて不自然になるため短縮）
 const ZOOM_MAX = 4.2;        // 寄りすぎると口が判別できなくなる
 const TITLE_W = 1080;
 const TITLE_H = 764;
@@ -279,10 +279,27 @@ export default function App() {
       // 同じ値にネイティブ駆動とJS駆動を混ぜると実行時に落ちる
       Animated.timing(curtain, { toValue: 1, duration: 1400, useNativeDriver: false }),
     ]).start(() => {
-      itemsRef.current = [];
+      // 森に入った瞬間、すでにいくつかキノコが生えている状態を作る（最初は空っぽで不自然だったのを修正）
+      const initialItems = [];
+      let seq = 0;
+      for (let i = 0; i < 4; i++) {
+        const m = pick(MUSHROOMS);
+        initialItems.push({
+          key: `m${seq++}`,
+          type: m.type,
+          src: m.src,
+          wx: (Math.random() < 0.5 ? -1 : 1) * (PATH_CLEAR + (1 - PATH_CLEAR) * Math.random()) * SPREAD,
+          z: Z_NEAR + 10 + Math.random() * (Z_FAR - Z_NEAR - 20),
+          spoke: false,
+        });
+      }
+      // 遠い順にソートしておく
+      initialItems.sort((a, b) => b.z - a.z);
+
+      itemsRef.current = initialItems;
       walkedRef.current = 0;
-      spawnInRef.current = 1;
-      seqRef.current = 0;
+      spawnInRef.current = SPAWN_EVERY;
+      seqRef.current = seq;
       exitAtRef.current = EXIT_MIN + Math.random() * (EXIT_MAX - EXIT_MIN);
       setPower(0);
       setSceneIndex(0);
