@@ -125,6 +125,11 @@ export default function App() {
   const [speech, setSpeech] = useState(null);
   const [power, setPower] = useState(0);        // きのこパワー = 森の明るさ
 
+  // 背景のクロスフェード用
+  const [bgCurrent, setBgCurrent] = useState(SCENES[0].src);
+  const [bgNext, setBgNext] = useState(null);
+  const bgFade = useRef(new Animated.Value(0)).current;
+
   const itemsRef = useRef([]);
   const [, redraw] = useReducer((n) => n + 1, 0);
 
@@ -195,6 +200,29 @@ export default function App() {
     ).start();
   }, [tapBounce]);
 
+  useEffect(() => {
+    const f = cave.play();
+    return () => f.then(() => cave.pause());
+  }, [cave]);
+
+  // シーンが切り替わったときのクロスフェード処理
+  useEffect(() => {
+    if (phase !== 'walking') return;
+    const nextSrc = SCENES[sceneIndex].src;
+    if (nextSrc !== bgCurrent) {
+      setBgNext(nextSrc);
+      bgFade.setValue(0);
+      Animated.timing(bgFade, {
+        toValue: 1,
+        duration: 2500, // 2.5秒かけてゆっくり次の風景に溶け込む
+        useNativeDriver: true,
+      }).start(() => {
+        setBgCurrent(nextSrc);
+        setBgNext(null);
+      });
+    }
+  }, [sceneIndex, phase]);
+
   // 菌糸の明滅
   useEffect(() => {
     Animated.loop(
@@ -205,19 +233,20 @@ export default function App() {
     ).start();
   }, [pulse]);
 
-  // 歩行中の上下の揺れ
+  // 歩行の頭の揺れ（上下）
   useEffect(() => {
-    if (!isWalking) {
-      bob.stopAnimation();
-      Animated.timing(bob, { toValue: 0, duration: 300, useNativeDriver: true }).start();
-      return;
-    }
+    if (!isWalking) return;
+    // 歩行のリズム（1.5Hz = 1秒間に1.5歩）で永遠にループ
     Animated.loop(
       Animated.sequence([
-        Animated.timing(bob, { toValue: 1, duration: 420, useNativeDriver: true }),
-        Animated.timing(bob, { toValue: 0, duration: 420, useNativeDriver: true }),
+        Animated.timing(bob, { toValue: 1, duration: 333, useNativeDriver: true }),
+        Animated.timing(bob, { toValue: 0, duration: 333, useNativeDriver: true }),
       ])
     ).start();
+    return () => {
+      bob.stopAnimation();
+      Animated.timing(bob, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+    };
   }, [isWalking, bob]);
 
   const say = useCallback((item) => {
@@ -440,13 +469,11 @@ export default function App() {
     );
   }
   
-  const totalWalk = exitAtRef.current || 1;
-  const progress = Math.max(0, walkedRef.current / totalWalk);
-  const localProgress = phase === 'walking' ? (progress * SCENES.length) % 1 : 0;
-  // 背景がパン（首振り）しても端が見えないように 1.15 倍スタートにする
-  const bgScale = 1.15 + (localProgress * 0.15);
+  // --- 背景とカメラの制御 ---
+  // 背景はズームさせない（氷滑り現象を防ぐため固定倍率）
+  const bgScale = 1.1; 
 
-  const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
+  const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, 12] });
   const glow = pulse.interpolate({
     inputRange: [0, 1],
     outputRange: isNight ? [0.45, 0.9] : [0.08, 0.18],
@@ -455,17 +482,16 @@ export default function App() {
 
   const timeSec = Date.now() / 1000; // 呼吸と揺れのための時間
 
-  // --- 3D視差（パララックス）と首振り（パン）の計算 ---
-  // 目線が1点に固定されないよう、ゆっくり首を振る
-  const panX = Math.sin(timeSec * 0.4) * 35; 
-  const panY = Math.sin(timeSec * 0.25) * 15;
+  // カメラのパン（首振り）とパララックス（視差）
+  // 1.5Hzの歩行テンポに合わせて、左右への体重移動（sway）を同期させる
+  const panX = Math.sin(timeSec * 0.5) * 20; 
+  const panY = Math.sin(timeSec * 0.3) * 10;
   const currentCx = (SCREEN_WIDTH / 2) + panX;
   const currentHorizon = phase === 'exit' ? 0.68 : SCENES[sceneIndex].horizon;
   const currentCy = (SCREEN_HEIGHT * currentHorizon) + panY;
 
-  // 歩行に合わせて体が左右に揺れる（遠くの背景より手前のキノコが大きく動く＝視差）
-  const swayPhase = walkedRef.current * 1.2;
-  const cameraTranslateX = Math.sin(swayPhase) * 45;
+  // 体重移動による視差。キノコが背景から独立して動くことで強い立体感が出る
+  const cameraTranslateX = Math.sin(timeSec * Math.PI * 1.5) * 35; // 1.5Hzで左右に揺れる
 
   // Web専用の環境光ブレンド（周囲の森の色味にキノコをなじませる）
   // 昼は少し彩度を落として暖色を足し、夜は暗くして青みを足す
@@ -516,18 +542,29 @@ export default function App() {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.fill, { transform: [{ translateY: bobY }] }]}>
-        <Image
-          source={phase === 'exit' ? require('./assets/bg_exit.png') : SCENES[sceneIndex].src}
+        
+        {/* 現在の背景 */}
+        <Animated.Image
+          source={phase === 'exit' ? require('./assets/bg_exit.png') : bgCurrent}
           style={[styles.fill, { transform: [{ scale: bgScale }, { translateX: panX }, { translateY: panY }] }]}
           resizeMode="cover"
         />
+        
+        {/* クロスフェード用の次の背景 */}
+        {bgNext && (
+          <Animated.Image
+            source={bgNext}
+            style={[styles.fill, { position: 'absolute', opacity: bgFade, transform: [{ scale: bgScale }, { translateX: panX }, { translateY: panY }] }]}
+            resizeMode="cover"
+          />
+        )}
 
         {isNight && <View pointerEvents="none" style={[styles.night, { opacity: nightAlpha }]} />}
         {!isNight && power > 0 && (
           <View pointerEvents="none" style={[styles.shine, { opacity: power * 0.7 }]} />
         )}
 
-        {/* 光の粒を描画 */}
+        {/* 光の粒（オプティカルフロー）を描画 */}
         {phase === 'walking' && drawnDust}
       </Animated.View>
 
