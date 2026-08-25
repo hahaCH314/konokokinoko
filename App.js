@@ -451,6 +451,11 @@ export default function App() {
       </View>
     );
   }
+  
+  const totalWalk = exitAtRef.current || 1;
+  const progress = Math.max(0, walkedRef.current / totalWalk);
+  const localProgress = phase === 'walking' ? (progress * SCENES.length) % 1 : 0;
+  const bgScale = 1.0 + (localProgress * 0.15);
 
   const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
   const glow = pulse.interpolate({
@@ -476,7 +481,7 @@ export default function App() {
       <Animated.View style={[styles.fill, { transform: [{ translateY: bobY }] }]}>
         <Image
           source={phase === 'exit' ? require('./assets/forest_7_exit.jpg') : SCENES[sceneIndex].src}
-          style={styles.fill}
+          style={[styles.fill, { transform: [{ scale: bgScale }] }]}
           resizeMode="cover"
         />
 
