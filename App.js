@@ -39,14 +39,16 @@ const POWER_MAX = 0.25;      // 上限。無制限だと白飛びする
 const EXIT_MIN = 120;        // 出口までの歩行時間（秒）。毎回変わる
 const EXIT_MAX = 300;
 
-// 歩くにつれてこの順に移り変わる
+// 歩くにつれてこの順に移り変わる（新しい森画像）
 const SCENES = [
-  { src: require('./assets/forest_1_entrance.jpg'), water: false, horizon: 0.68 },
-  { src: require('./assets/forest_2_steps.jpg'), water: false, horizon: 0.68 },
-  { src: require('./assets/forest_3_clearing.jpg'), water: false, horizon: 0.68 },
-  { src: require('./assets/forest_4_water.jpg'), water: true, horizon: 0.68 },
-  { src: require('./assets/forest_5_deep.jpg'), water: false, horizon: 0.68 },
-  { src: require('./assets/forest_6_night.jpg'), water: false, horizon: 0.68 },
+  { src: require('./assets/bg_forest_0.png'), water: false, horizon: 0.68 },
+  { src: require('./assets/bg_forest_1.png'), water: false, horizon: 0.68 },
+  { src: require('./assets/bg_forest_2.png'), water: false, horizon: 0.68 },
+  { src: require('./assets/bg_forest_3.png'), water: false, horizon: 0.68 },
+  { src: require('./assets/bg_forest_4.png'), water: true, horizon: 0.68 },
+  { src: require('./assets/bg_forest_5.png'), water: false, horizon: 0.68 },
+  { src: require('./assets/bg_forest_6.png'), water: false, horizon: 0.68 },
+  { src: require('./assets/bg_forest_7.png'), water: false, horizon: 0.68 },
 ];
 
 // タイトルの口。閉じる→少し開く→大きく開く を1枚ずつ見せてから寄る
@@ -563,7 +565,7 @@ export default function App() {
     <View style={styles.container}>
       <Animated.View style={[styles.fill, { transform: [{ translateY: bobY }] }]}>
         <Image
-          source={phase === 'exit' ? require('./assets/forest_7_exit.jpg') : SCENES[sceneIndex].src}
+          source={phase === 'exit' ? require('./assets/bg_exit.png') : SCENES[sceneIndex].src}
           style={[styles.fill, { transform: [{ scale: bgScale }, { translateX: panX }, { translateY: panY }] }]}
           resizeMode="cover"
         />
