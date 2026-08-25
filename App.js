@@ -25,14 +25,14 @@ const EXIT_MIN = 120;
 const EXIT_MAX = 300;
 
 const SCENES = [
-  { src: require('./assets/bg_forest_0.png') },
-  { src: require('./assets/bg_forest_1.png') },
-  { src: require('./assets/bg_forest_2.png') },
-  { src: require('./assets/bg_forest_3.png') },
-  { src: require('./assets/bg_forest_4.png') },
-  { src: require('./assets/bg_forest_5.png') },
-  { src: require('./assets/bg_forest_6.png') },
-  { src: require('./assets/bg_forest_7.png') },
+  { src: require('./assets/forest_1_entrance.jpg') },
+  { src: require('./assets/forest_2_steps.jpg') },
+  { src: require('./assets/forest_3_clearing.jpg') },
+  { src: require('./assets/forest_4_water.jpg') },
+  { src: require('./assets/forest_5_deep.jpg') },
+  { src: require('./assets/forest_6_night.jpg') },
+  { src: require('./assets/forest_7_exit.jpg') },
+  { src: require('./assets/forest_7_exit.jpg') },
 ];
 
 const MUSHROOMS = [
@@ -179,7 +179,7 @@ function BackgroundCrossfade({ sceneIndex, cameraZ, isNight, power, phase }) {
 
   const bgZ = cameraZ - 70; 
 
-  const currentSrc = phase === 'exit' ? require('./assets/bg_exit.png') : SCENES[currentIdx].src;
+  const currentSrc = phase === 'exit' ? require('./assets/forest_7_exit.jpg') : SCENES[currentIdx].src;
   const nextSrc = nextIdx !== null ? SCENES[nextIdx].src : null;
 
   return (
@@ -264,12 +264,12 @@ export default function App() {
   const curtain = useRef(new Animated.Value(0)).current;
   const zoom = useRef(new Animated.Value(1)).current;
 
-  const cave = useAudioPlayer(require('./assets/cave.mp3'));
-  const ambDay = useAudioPlayer(require('./assets/amb_day.mp3'));
-  const ambNight = useAudioPlayer(require('./assets/amb_night.mp3'));
-  const wind = useAudioPlayer(require('./assets/wind.mp3'));
-  const stream = useAudioPlayer(require('./assets/stream.mp3'));
-  const steps = useAudioPlayer(require('./assets/steps.mp3'));
+  const cave = useAudioPlayer(require('./assets/footsteps.mp3')); // fallback
+  const ambDay = useAudioPlayer(require('./assets/trees.mp3'));
+  const ambNight = useAudioPlayer(require('./assets/night_bgm.mp3'));
+  const wind = useAudioPlayer(require('./assets/trees.mp3')); // fallback
+  const stream = useAudioPlayer(require('./assets/trees.mp3')); // fallback
+  const steps = useAudioPlayer(require('./assets/footsteps.mp3'));
 
   useEffect(() => {
     cave.loop = true; ambDay.loop = true; ambNight.loop = true;
@@ -400,7 +400,7 @@ export default function App() {
   }, [isWalking, phase, steps]);
 
   const { x: mX, y: mY, size: mSize } = mouthOnScreen();
-  const handW = mSize * HAND_RATIO;
+  const handW = mSize * 0.18;
   const handH = handW * 1.5;
 
   return (
@@ -469,19 +469,18 @@ export default function App() {
           {phase === 'title' && (
             <Animated.View pointerEvents="none" style={{
               position: 'absolute',
-              left: mX - handW * HAND_OFF_X,
-              top: mY + handH * HAND_OFF_Y,
+              left: mX - handW * 0.7,
+              top: mY + handW * 0.1,
               width: handW,
               height: handH,
               transform: [{ rotate: `${HAND_TILT}deg` }]
             }}>
-              <Image source={require('./assets/cute_white_hand.png')} style={styles.fill} resizeMode="contain" />
+              <Image source={require('./assets/tap_hand.png')} style={styles.fill} resizeMode="contain" />
             </Animated.View>
           )}
           
           <TouchableOpacity style={styles.fill} activeOpacity={1} onPress={enterForest}>
             <View style={[styles.fill, { justifyContent: 'flex-start', alignItems: 'center', paddingTop: 80 }]}>
-              {phase === 'title' && <Text style={styles.titleText}>TAP TO ENTER</Text>}
             </View>
           </TouchableOpacity>
         </View>
