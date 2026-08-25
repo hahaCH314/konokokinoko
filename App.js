@@ -22,7 +22,6 @@ const Z_NEAR = 15;
 const FOCAL = 15;
 // 森の写真は、道が画面の 68% あたりで消えている。ここを地平線として扱う。
 // ここがずれると、キノコが地面から浮いて宙に生えているように見える。
-const HORIZON = 0.68;
 // 画面の大きさに対する割合で決める。固定pxだと機種によって別物になる
 const BASE_SIZE = SCREEN_HEIGHT * 0.42;   // すぐ横を通るときの一辺
 const GROUND = SCREEN_HEIGHT * 0.32;      // 地平線から足元までの落差
@@ -42,12 +41,12 @@ const EXIT_MAX = 300;
 
 // 歩くにつれてこの順に移り変わる
 const SCENES = [
-  { src: require('./assets/forest_1_entrance.jpg'), water: false },
-  { src: require('./assets/forest_2_steps.jpg'), water: false },
-  { src: require('./assets/forest_3_clearing.jpg'), water: false },
-  { src: require('./assets/forest_4_water.jpg'), water: true },
-  { src: require('./assets/forest_5_deep.jpg'), water: false },
-  { src: require('./assets/forest_6_night.jpg'), water: false },
+  { src: require('./assets/forest_1_entrance.jpg'), water: false, horizon: 0.68 },
+  { src: require('./assets/forest_2_steps.jpg'), water: false, horizon: 0.68 },
+  { src: require('./assets/forest_3_clearing.jpg'), water: false, horizon: 0.68 },
+  { src: require('./assets/forest_4_water.jpg'), water: true, horizon: 0.68 },
+  { src: require('./assets/forest_5_deep.jpg'), water: false, horizon: 0.68 },
+  { src: require('./assets/forest_6_night.jpg'), water: false, horizon: 0.68 },
 ];
 
 // タイトルの口。閉じる→少し開く→大きく開く を1枚ずつ見せてから寄る
@@ -461,11 +460,14 @@ export default function App() {
   const nightAlpha = Math.max(0, 0.72 - power * 1.6);
 
   const cx = SCREEN_WIDTH / 2;
-  const cy = SCREEN_HEIGHT * HORIZON;
+  const currentHorizon = phase === 'exit' ? 0.68 : SCENES[sceneIndex].horizon;
+  const cy = SCREEN_HEIGHT * currentHorizon;
   const drawn = itemsRef.current.map((it) => {
     const scale = FOCAL / it.z;
     const size = BASE_SIZE * scale;
-    return { it, size, x: cx + it.wx * scale, y: cy + GROUND * scale };
+    // 遠く(Z_FAR)から現れるとき、急にポップしないよう透明度をフェードインさせる
+    const opacity = Math.min(1, Math.max(0, (Z_FAR - it.z) / 25));
+    return { it, size, x: cx + it.wx * scale, y: cy + GROUND * scale, opacity };
   });
 
   return (
@@ -482,11 +484,11 @@ export default function App() {
           <View pointerEvents="none" style={[styles.shine, { opacity: power * 0.7 }]} />
         )}
 
-        {phase === 'walking' && drawn.map(({ it, size, x, y }) => (
+        {phase === 'walking' && drawn.map(({ it, size, x, y, opacity }) => (
           <View
             key={it.key}
             pointerEvents="none"
-            style={{ position: 'absolute', left: x - size / 2, top: y - size, width: size, height: size }}
+            style={{ position: 'absolute', left: x - size / 2, top: y - size, width: size, height: size, opacity: opacity }}
           >
             <Animated.Image
               source={require('./assets/mycelium.png')}
