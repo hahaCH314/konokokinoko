@@ -5,8 +5,6 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Billboard, Image as DreiImage, Points, PointMaterial } from '@react-three/drei';
 import * as THREE from 'three';
 
-const getUri = (req) => Image.resolveAssetSource(req).uri;
-
 import LINES from './mushroomLines.json';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -27,22 +25,20 @@ const EXIT_MIN = 120;
 const EXIT_MAX = 300;
 
 const SCENES = [
-  { src: require('./assets/forest_1_entrance.jpg') },
-  { src: require('./assets/forest_2_steps.jpg') },
-  { src: require('./assets/forest_3_clearing.jpg') },
-  { src: require('./assets/forest_4_water.jpg') },
-  { src: require('./assets/forest_5_deep.jpg') },
-  { src: require('./assets/forest_6_night.jpg') },
-  { src: require('./assets/forest_7_exit.jpg') },
-  { src: require('./assets/forest_7_exit.jpg') },
+  { srcUrl: '/assets/assets/forest_1_entrance.jpg' },
+  { srcUrl: '/assets/assets/forest_2_path.jpg' },
+  { srcUrl: '/assets/assets/forest_3_deep.jpg' },
+  { srcUrl: '/assets/assets/forest_4_clearing.jpg' },
+  { srcUrl: '/assets/assets/forest_5_glowing.jpg' },
+  { srcUrl: '/assets/assets/forest_6_dark.jpg' },
 ];
 
 const MUSHROOMS = [
-  { type: 'shiitake', src: require('./assets/char_mushroom_1.png') },
-  { type: 'king_oyster', src: require('./assets/char_mushroom_2.png') },
-  { type: 'nameko', src: require('./assets/char_mushroom_3.png') },
-  { type: 'matsutake', src: require('./assets/char_mushroom_4.png') },
-  { type: 'black_truffle', src: require('./assets/char_mushroom_5.png') },
+  { type: 'shiitake', srcUrl: '/assets/assets/char_mushroom_1.png' },
+  { type: 'king_oyster', srcUrl: '/assets/assets/char_mushroom_2.png' },
+  { type: 'nameko', srcUrl: '/assets/assets/char_mushroom_3.png' },
+  { type: 'matsutake', srcUrl: '/assets/assets/char_mushroom_4.png' },
+  { type: 'black_truffle', srcUrl: '/assets/assets/char_mushroom_5.png' },
 ];
 
 const TITLE_FRAMES = [
@@ -147,7 +143,7 @@ function MushroomBillboard({ item, cameraZ, isNight, onSpeak }) {
 
   return (
     <Billboard position={[item.wx, -3, item.z]} ref={ref}>
-      <DreiImage url={getUri(item.src)} scale={[8, 8]} transparent depthWrite={false} color={color} />
+      <DreiImage url={item.srcUrl} scale={[8, 8]} transparent depthWrite={false} color={color} />
       <mesh position={[0, -4, -0.1]}>
         <planeGeometry args={[6, 1.5]} />
         <meshBasicMaterial color="black" transparent opacity={0.4} />
@@ -181,14 +177,14 @@ function BackgroundCrossfade({ sceneIndex, cameraZ, isNight, power, phase }) {
 
   const bgZ = cameraZ - 70; 
 
-  const currentSrc = phase === 'exit' ? require('./assets/forest_7_exit.jpg') : SCENES[currentIdx].src;
-  const nextSrc = nextIdx !== null ? SCENES[nextIdx].src : null;
+  const currentSrcUrl = phase === 'exit' ? '/assets/assets/forest_7_exit.jpg' : SCENES[currentIdx].srcUrl;
+  const nextSrcUrl = nextIdx !== null ? SCENES[nextIdx].srcUrl : null;
 
   return (
     <group position={[0, 0, bgZ]}>
-      <DreiImage url={getUri(currentSrc)} scale={[120, 90]} transparent opacity={1} depthWrite={false} />
-      {nextSrc && (
-        <DreiImage url={getUri(nextSrc)} scale={[120, 90]} transparent opacity={fade.current} depthWrite={false} />
+      <DreiImage url={currentSrcUrl} scale={[120, 90]} transparent opacity={1} depthWrite={false} />
+      {nextSrcUrl && (
+        <DreiImage url={nextSrcUrl} scale={[120, 90]} transparent opacity={fade.current} depthWrite={false} />
       )}
       
       {isNight && (
@@ -364,7 +360,7 @@ export default function App() {
           itemsRef.current.push({
             key: `m${seqRef.current++}`,
             type: m.type,
-            src: m.src,
+            srcUrl: m.srcUrl,
             wx: (Math.random() < 0.5 ? -1 : 1) * (PATH_CLEAR + (1 - PATH_CLEAR) * Math.random()) * SPREAD,
             z: -walkedRef.current - Z_FAR, 
             spoke: false,
@@ -378,10 +374,6 @@ export default function App() {
         const progress = walkedRef.current / exitAtRef.current;
         const next = Math.min(SCENES.length - 1, Math.floor(progress * SCENES.length));
         setSceneIndex((cur) => (cur === next ? cur : next));
-
-        const hasWater = SCENES[next].water;
-        if (hasWater && !stream.playing) stream.play();
-        else if (!hasWater && stream.playing) stream.pause();
 
         if (progress > 0.75 && !nightRef.current) {
           nightRef.current = true;
