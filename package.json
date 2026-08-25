@@ -7,6 +7,7 @@
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
     "expo": "~57.0.16",
+    "expo-asset": "~57.0.14",
     "expo-audio": "~57.0.4",
     "expo-av": "^16.0.8",
     "expo-gl": "~57.0.2",

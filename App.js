@@ -6,6 +6,7 @@ import { Billboard, Image as DreiImage, Points, PointMaterial } from '@react-thr
 import * as THREE from 'three';
 
 import LINES from './mushroomLines.json';
+import MUSHROOM_DATA from './assets/mushrooms/mushrooms.json';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -33,13 +34,10 @@ const SCENES = [
   { srcUrl: '/assets/assets/forest_6_dark.jpg' },
 ];
 
-const MUSHROOMS = [
-  { type: 'shiitake', srcUrl: '/assets/assets/char_mushroom_1.png' },
-  { type: 'king_oyster', srcUrl: '/assets/assets/char_mushroom_2.png' },
-  { type: 'nameko', srcUrl: '/assets/assets/char_mushroom_3.png' },
-  { type: 'matsutake', srcUrl: '/assets/assets/char_mushroom_4.png' },
-  { type: 'black_truffle', srcUrl: '/assets/assets/char_mushroom_5.png' },
-];
+const MUSHROOMS = MUSHROOM_DATA.map(m => ({
+  type: m.type,
+  srcUrl: `/assets/${m.file}`
+}));
 
 const TITLE_FRAMES = [
   require('./assets/title_1_new.png'),

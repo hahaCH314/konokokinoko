@@ -1,0 +1,302 @@
+[
+ {
+  "type": "shiitake",
+  "file": "assets/mushrooms/shiitake.png",
+  "sheet": "きのこ１.png",
+  "index": 0
+ },
+ {
+  "type": "king_oyster",
+  "file": "assets/mushrooms/king_oyster.png",
+  "sheet": "きのこ１.png",
+  "index": 1
+ },
+ {
+  "type": "nameko",
+  "file": "assets/mushrooms/nameko.png",
+  "sheet": "きのこ１.png",
+  "index": 2
+ },
+ {
+  "type": "matsutake",
+  "file": "assets/mushrooms/matsutake.png",
+  "sheet": "きのこ１.png",
+  "index": 3
+ },
+ {
+  "type": "black_truffle",
+  "file": "assets/mushrooms/black_truffle.png",
+  "sheet": "きのこ１.png",
+  "index": 4
+ },
+ {
+  "type": "enoki",
+  "file": "assets/mushrooms/enoki.png",
+  "sheet": "きのこ１.png",
+  "index": 5
+ },
+ {
+  "type": "oyster_mushroom",
+  "file": "assets/mushrooms/oyster_mushroom.png",
+  "sheet": "きのこ１.png",
+  "index": 6
+ },
+ {
+  "type": "shimeji",
+  "file": "assets/mushrooms/shimeji.png",
+  "sheet": "きのこ１.png",
+  "index": 7
+ },
+ {
+  "type": "maitake",
+  "file": "assets/mushrooms/maitake.png",
+  "sheet": "きのこ１.png",
+  "index": 8
+ },
+ {
+  "type": "porcini",
+  "file": "assets/mushrooms/porcini.png",
+  "sheet": "きのこ１.png",
+  "index": 9
+ },
+ {
+  "type": "white_button",
+  "file": "assets/mushrooms/white_button.png",
+  "sheet": "きのこ２.png",
+  "index": 0
+ },
+ {
+  "type": "caesar_mushroom",
+  "file": "assets/mushrooms/caesar_mushroom.png",
+  "sheet": "きのこ２.png",
+  "index": 1
+ },
+ {
+  "type": "morel",
+  "file": "assets/mushrooms/morel.png",
+  "sheet": "きのこ２.png",
+  "index": 2
+ },
+ {
+  "type": "chanterelle",
+  "file": "assets/mushrooms/chanterelle.png",
+  "sheet": "きのこ２.png",
+  "index": 3
+ },
+ {
+  "type": "wood_ear",
+  "file": "assets/mushrooms/wood_ear.png",
+  "sheet": "きのこ２.png",
+  "index": 4
+ },
+ {
+  "type": "bamboo_fungus",
+  "file": "assets/mushrooms/bamboo_fungus.png",
+  "sheet": "きのこ２.png",
+  "index": 5
+ },
+ {
+  "type": "fly_agaric",
+  "file": "assets/mushrooms/fly_agaric.png",
+  "sheet": "きのこ２.png",
+  "index": 6
+ },
+ {
+  "type": "cremini",
+  "file": "assets/mushrooms/cremini.png",
+  "sheet": "きのこ２.png",
+  "index": 7
+ },
+ {
+  "type": "shaggy_ink_cap",
+  "file": "assets/mushrooms/shaggy_ink_cap.png",
+  "sheet": "きのこ２.png",
+  "index": 8
+ },
+ {
+  "type": "lions_mane",
+  "file": "assets/mushrooms/lions_mane.png",
+  "sheet": "きのこ２.png",
+  "index": 9
+ },
+ {
+  "type": "turkey_tail",
+  "file": "assets/mushrooms/turkey_tail.png",
+  "sheet": "きのこ３.png",
+  "index": 0
+ },
+ {
+  "type": "puffball",
+  "file": "assets/mushrooms/puffball.png",
+  "sheet": "きのこ３.png",
+  "index": 1
+ },
+ {
+  "type": "indigo_milk_cap",
+  "file": "assets/mushrooms/indigo_milk_cap.png",
+  "sheet": "きのこ３.png",
+  "index": 2
+ },
+ {
+  "type": "bleeding_tooth",
+  "file": "assets/mushrooms/bleeding_tooth.png",
+  "sheet": "きのこ３.png",
+  "index": 3
+ },
+ {
+  "type": "death_cap",
+  "file": "assets/mushrooms/death_cap.png",
+  "sheet": "きのこ３.png",
+  "index": 4
+ },
+ {
+  "type": "destroying_angel",
+  "file": "assets/mushrooms/destroying_angel.png",
+  "sheet": "きのこ３.png",
+  "index": 5
+ },
+ {
+  "type": "parasol_mushroom",
+  "file": "assets/mushrooms/parasol_mushroom.png",
+  "sheet": "きのこ３.png",
+  "index": 6
+ },
+ {
+  "type": "chicken_of_the_woods",
+  "file": "assets/mushrooms/chicken_of_the_woods.png",
+  "sheet": "きのこ３.png",
+  "index": 7
+ },
+ {
+  "type": "amethyst_deceiver",
+  "file": "assets/mushrooms/amethyst_deceiver.png",
+  "sheet": "きのこ３.png",
+  "index": 8
+ },
+ {
+  "type": "bioluminescent",
+  "file": "assets/mushrooms/bioluminescent.png",
+  "sheet": "きのこ３.png",
+  "index": 9
+ },
+ {
+  "type": "reishi",
+  "file": "assets/mushrooms/reishi.png",
+  "sheet": "きのこ４.png",
+  "index": 0
+ },
+ {
+  "type": "tremella",
+  "file": "assets/mushrooms/tremella.png",
+  "sheet": "きのこ４.png",
+  "index": 1
+ },
+ {
+  "type": "stinkhorn",
+  "file": "assets/mushrooms/stinkhorn.png",
+  "sheet": "きのこ４.png",
+  "index": 2
+ },
+ {
+  "type": "earthstar",
+  "file": "assets/mushrooms/earthstar.png",
+  "sheet": "きのこ４.png",
+  "index": 3
+ },
+ {
+  "type": "birds_nest",
+  "file": "assets/mushrooms/birds_nest.png",
+  "sheet": "きのこ４.png",
+  "index": 4
+ },
+ {
+  "type": "honey_fungus",
+  "file": "assets/mushrooms/honey_fungus.png",
+  "sheet": "きのこ４.png",
+  "index": 5
+ },
+ {
+  "type": "coral_fungus",
+  "file": "assets/mushrooms/coral_fungus.png",
+  "sheet": "きのこ４.png",
+  "index": 6
+ },
+ {
+  "type": "velvet_shank",
+  "file": "assets/mushrooms/velvet_shank.png",
+  "sheet": "きのこ４.png",
+  "index": 7
+ },
+ {
+  "type": "saffron_milk_cap",
+  "file": "assets/mushrooms/saffron_milk_cap.png",
+  "sheet": "きのこ４.png",
+  "index": 8
+ },
+ {
+  "type": "slippery_jack",
+  "file": "assets/mushrooms/slippery_jack.png",
+  "sheet": "きのこ４.png",
+  "index": 9
+ },
+ {
+  "type": "witchs_butter",
+  "file": "assets/mushrooms/witchs_butter.png",
+  "sheet": "きのこ５.png",
+  "index": 0
+ },
+ {
+  "type": "pixies_parasol",
+  "file": "assets/mushrooms/pixies_parasol.png",
+  "sheet": "きのこ５.png",
+  "index": 1
+ },
+ {
+  "type": "brain_mushroom",
+  "file": "assets/mushrooms/brain_mushroom.png",
+  "sheet": "きのこ５.png",
+  "index": 2
+ },
+ {
+  "type": "beefsteak_fungus",
+  "file": "assets/mushrooms/beefsteak_fungus.png",
+  "sheet": "きのこ５.png",
+  "index": 3
+ },
+ {
+  "type": "devils_fingers",
+  "file": "assets/mushrooms/devils_fingers.png",
+  "sheet": "きのこ５.png",
+  "index": 4
+ },
+ {
+  "type": "dead_mans_fingers",
+  "file": "assets/mushrooms/dead_mans_fingers.png",
+  "sheet": "きのこ５.png",
+  "index": 5
+ },
+ {
+  "type": "fairy_ring_champignon",
+  "file": "assets/mushrooms/fairy_ring_champignon.png",
+  "sheet": "きのこ５.png",
+  "index": 6
+ },
+ {
+  "type": "golden_spindles",
+  "file": "assets/mushrooms/golden_spindles.png",
+  "sheet": "きのこ５.png",
+  "index": 7
+ },
+ {
+  "type": "hedgehog_mushroom",
+  "file": "assets/mushrooms/hedgehog_mushroom.png",
+  "sheet": "きのこ５.png",
+  "index": 8
+ },
+ {
+  "type": "orange_peel_fungus",
+  "file": "assets/mushrooms/orange_peel_fungus.png",
+  "sheet": "きのこ５.png",
+  "index": 9
+ }
+]
