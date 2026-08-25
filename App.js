@@ -53,8 +53,8 @@ const TITLE_FRAMES = [
 
 const TITLE_W = 1000;
 const TITLE_H = 1414;
-const MOUTH_X = 0.47;
-const MOUTH_Y = 0.58;
+const MOUTH_X = 0.50;
+const MOUTH_Y = 0.63;
 const HAND_RATIO = 0.075;
 const HAND_TILT = 28;
 const HAND_OFF_X = 0.85;
@@ -482,7 +482,7 @@ export default function App() {
             <Animated.View pointerEvents="none" style={{
               position: 'absolute',
               left: mX - handW * 0.7,
-              top: mY + handW * 0.1,
+              top: mY - handW * 0.4,
               width: handW,
               height: handH,
               opacity: tapOpacity,
