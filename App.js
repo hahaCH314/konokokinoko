@@ -464,10 +464,11 @@ export default function App() {
   const cy = SCREEN_HEIGHT * currentHorizon;
   const drawn = itemsRef.current.map((it) => {
     const scale = FOCAL / it.z;
-    const size = BASE_SIZE * scale;
-    // 遠く(Z_FAR)から現れるとき、急にポップしないよう透明度をフェードインさせる
-    const opacity = Math.min(1, Math.max(0, (Z_FAR - it.z) / 25));
-    return { it, size, x: cx + it.wx * scale, y: cy + GROUND * scale, opacity };
+    // 遠く(Z_FAR)から現れるとき、幽霊のように透けるのではなく、
+    // 地面から「ニョキッ」と生える（急成長する）ようにサイズを絞る
+    const sprout = Math.min(1, Math.max(0, (Z_FAR - it.z) / 20));
+    const size = BASE_SIZE * scale * sprout;
+    return { it, size, x: cx + it.wx * scale, y: cy + GROUND * scale };
   });
 
   return (
@@ -484,11 +485,11 @@ export default function App() {
           <View pointerEvents="none" style={[styles.shine, { opacity: power * 0.7 }]} />
         )}
 
-        {phase === 'walking' && drawn.map(({ it, size, x, y, opacity }) => (
+        {phase === 'walking' && drawn.map(({ it, size, x, y }) => (
           <View
             key={it.key}
             pointerEvents="none"
-            style={{ position: 'absolute', left: x - size / 2, top: y - size, width: size, height: size, opacity: opacity }}
+            style={{ position: 'absolute', left: x - size / 2, top: y - size, width: size, height: size }}
           >
             <Animated.Image
               source={require('./assets/mycelium.png')}
