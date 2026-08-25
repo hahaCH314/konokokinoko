@@ -46,9 +46,9 @@ const MUSHROOMS = [
 ];
 
 const TITLE_FRAMES = [
-  require('./assets/title_1_closed.png'),
-  require('./assets/title_2_open.png'),
-  require('./assets/title_3_wide.png'),
+  require('./assets/title_1_new.png'),
+  require('./assets/title_2_new.png'),
+  require('./assets/title_3_new.png'),
 ];
 
 const TITLE_W = 1000;
