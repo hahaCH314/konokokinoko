@@ -263,6 +263,16 @@ export default function App() {
 
   const curtain = useRef(new Animated.Value(0)).current;
   const zoom = useRef(new Animated.Value(1)).current;
+  const tapOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tapOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.timing(tapOpacity, { toValue: 1, duration: 600, useNativeDriver: true })
+      ])
+    ).start();
+  }, [tapOpacity]);
 
   const cave = useAudioPlayer(require('./assets/footsteps.mp3')); // fallback
   const ambDay = useAudioPlayer(require('./assets/trees.mp3'));
@@ -473,6 +483,7 @@ export default function App() {
               top: mY + handW * 0.1,
               width: handW,
               height: handH,
+              opacity: tapOpacity,
               transform: [{ rotate: `${HAND_TILT}deg` }]
             }}>
               <Image source={require('./assets/tap_hand.png')} style={styles.fill} resizeMode="contain" />
