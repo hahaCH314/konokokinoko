@@ -1,20 +1,517 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
+
+import LINES from './mushroomLines.json';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// --- 森の見え方 -------------------------------------------------------------
+// 奥行き z が Z_FAR から減っていき、Z_NEAR を切ったら通り過ぎたものとして消す。
+// 画面上の大きさは FOCAL / z。z = FOCAL のとき等倍になる。
+const Z_FAR = 100;
+const Z_NEAR = 15;
+const FOCAL = 15;
+const BASE_SIZE = 300;       // すれ違うときの一辺
+const SPREAD = 230;          // 道の左右への広がり
+const GROUND = 60;           // 消失点から足元までの落差
+const HORIZON = 0.56;        // 消失点の高さ。背景の道の奥に合わせてある
+
+const WALK_SPEED = 18;       // 1秒あたり z がどれだけ減るか
+const SPAWN_EVERY = 1.1;     // 何秒に1体出すか
+const MAX_ALIVE = 6;
+const SPEAK_AT = 42;         // この距離まで近づいたら声を掛けてくる
+
+const POWER_STEP = 0.018;    // すれ違い1回ぶんの明るさ
+const POWER_MAX = 0.25;      // 上限。無制限だと白飛びする
+
+const EXIT_MIN = 120;        // 出口までの歩行時間（秒）。毎回変わる
+const EXIT_MAX = 300;
+
+// 歩くにつれてこの順に移り変わる
+const SCENES = [
+  { src: require('./assets/forest_1_entrance.jpg'), water: false },
+  { src: require('./assets/forest_2_steps.jpg'), water: false },
+  { src: require('./assets/forest_3_clearing.jpg'), water: false },
+  { src: require('./assets/forest_4_water.jpg'), water: true },
+  { src: require('./assets/forest_5_deep.jpg'), water: false },
+  { src: require('./assets/forest_6_night.jpg'), water: false },
+];
+
+const TITLE_FRAMES = [
+  require('./assets/title_1_closed.png'),
+  require('./assets/title_2_open.png'),
+  require('./assets/title_3_wide.png'),
+];
+
+// type は mushroomLines.json のキーと対応している
+const MUSHROOMS = [
+  { type: 'shiitake', src: require('./assets/shiitake.png') },
+  { type: 'king_oyster', src: require('./assets/king_oyster.png') },
+  { type: 'nameko', src: require('./assets/nameko.png') },
+  { type: 'matsutake', src: require('./assets/matsutake.png') },
+  { type: 'black_truffle', src: require('./assets/black_truffle.png') },
+  { type: 'enoki', src: require('./assets/enoki.png') },
+  { type: 'oyster_mushroom', src: require('./assets/oyster_mushroom.png') },
+  { type: 'shimeji', src: require('./assets/shimeji.png') },
+  { type: 'maitake', src: require('./assets/maitake.png') },
+  { type: 'porcini', src: require('./assets/porcini.png') },
+  { type: 'white_button', src: require('./assets/white_button.png') },
+  { type: 'caesar_mushroom', src: require('./assets/caesar_mushroom.png') },
+  { type: 'morel', src: require('./assets/morel.png') },
+  { type: 'chanterelle', src: require('./assets/chanterelle.png') },
+  { type: 'wood_ear', src: require('./assets/wood_ear.png') },
+  { type: 'bamboo_fungus', src: require('./assets/bamboo_fungus.png') },
+  { type: 'fly_agaric', src: require('./assets/fly_agaric.png') },
+  { type: 'cremini', src: require('./assets/cremini.png') },
+  { type: 'shaggy_ink_cap', src: require('./assets/shaggy_ink_cap.png') },
+  { type: 'lions_mane', src: require('./assets/lions_mane.png') },
+  { type: 'turkey_tail', src: require('./assets/turkey_tail.png') },
+  { type: 'puffball', src: require('./assets/puffball.png') },
+  { type: 'indigo_milk_cap', src: require('./assets/indigo_milk_cap.png') },
+  { type: 'bleeding_tooth', src: require('./assets/bleeding_tooth.png') },
+  { type: 'death_cap', src: require('./assets/death_cap.png') },
+  { type: 'destroying_angel', src: require('./assets/destroying_angel.png') },
+  { type: 'parasol_mushroom', src: require('./assets/parasol_mushroom.png') },
+  { type: 'chicken_of_the_woods', src: require('./assets/chicken_of_the_woods.png') },
+  { type: 'amethyst_deceiver', src: require('./assets/amethyst_deceiver.png') },
+  { type: 'bioluminescent', src: require('./assets/bioluminescent.png') },
+  { type: 'reishi', src: require('./assets/reishi.png') },
+  { type: 'tremella', src: require('./assets/tremella.png') },
+  { type: 'stinkhorn', src: require('./assets/stinkhorn.png') },
+  { type: 'earthstar', src: require('./assets/earthstar.png') },
+  { type: 'birds_nest', src: require('./assets/birds_nest.png') },
+  { type: 'honey_fungus', src: require('./assets/honey_fungus.png') },
+  { type: 'coral_fungus', src: require('./assets/coral_fungus.png') },
+  { type: 'velvet_shank', src: require('./assets/velvet_shank.png') },
+  { type: 'saffron_milk_cap', src: require('./assets/saffron_milk_cap.png') },
+  { type: 'slippery_jack', src: require('./assets/slippery_jack.png') },
+  { type: 'witchs_butter', src: require('./assets/witchs_butter.png') },
+  { type: 'pixies_parasol', src: require('./assets/pixies_parasol.png') },
+  { type: 'brain_mushroom', src: require('./assets/brain_mushroom.png') },
+  { type: 'beefsteak_fungus', src: require('./assets/beefsteak_fungus.png') },
+  { type: 'devils_fingers', src: require('./assets/devils_fingers.png') },
+  { type: 'dead_mans_fingers', src: require('./assets/dead_mans_fingers.png') },
+  { type: 'fairy_ring_champignon', src: require('./assets/fairy_ring_champignon.png') },
+  { type: 'golden_spindles', src: require('./assets/golden_spindles.png') },
+  { type: 'hedgehog_mushroom', src: require('./assets/hedgehog_mushroom.png') },
+  { type: 'orange_peel_fungus', src: require('./assets/orange_peel_fungus.png') },
+  { type: 'shiitake_woman', src: require('./assets/shiitake_woman.png') },
+  { type: 'flyagaric_rare', src: require('./assets/flyagaric_rare.png') },
+  { type: 'mushroom', src: require('./assets/mushroom.png') },
+];
+
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+/** そのキノコが言うことば。固有のことばと共通のことばを混ぜて選ぶ。 */
+function lineFor(type, isNight) {
+  const own = LINES[type]?.lines || [];
+  const c = LINES.common || {};
+  // 夜は落ち着いたことば、昼は明るいことばを多めにする
+  const pool = isNight
+    ? [...(c.heal || []), ...(c.heal || []), ...(c.cheer || []), ...(c.funny || [])]
+    : [...(c.cheer || []), ...(c.cheer || []), ...(c.heal || []), ...(c.funny || [])];
+  return pick([...own, ...own, ...pool]);
+}
+
+/** ことばの長さに合わせて表示時間を決める。固定だと長い文が読み終わらない。 */
+const readingTime = (text) => 1500 + text.length * 120;
 
 export default function App() {
+  const [phase, setPhase] = useState('title');  // title | opening | walking | exit | ending
+  const [mouthFrame, setMouthFrame] = useState(0);
+  const [isNight, setIsNight] = useState(false);
+  const [isWalking, setIsWalking] = useState(false);
+  const [sceneIndex, setSceneIndex] = useState(0);
+  const [speech, setSpeech] = useState(null);
+  const [power, setPower] = useState(0);        // きのこパワー = 森の明るさ
+
+  const itemsRef = useRef([]);
+  const [, redraw] = useReducer((n) => n + 1, 0);
+
+  const walkingRef = useRef(false);
+  const walkedRef = useRef(0);
+  const spawnInRef = useRef(1);
+  const exitAtRef = useRef(EXIT_MIN);
+  const seqRef = useRef(0);
+  const nightRef = useRef(false);
+  const speechRef = useRef(null);   // 表示中は次を出さない
+  const speechTimer = useRef(null);
+
+  const bob = useRef(new Animated.Value(0)).current;
+  const zoom = useRef(new Animated.Value(1)).current;
+  const curtain = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => { nightRef.current = isNight; }, [isNight]);
+
+  // --- 音 -------------------------------------------------------------------
+  const ambDay = useAudioPlayer(require('./assets/audio/amb_mountain1.mp3'));
+  const ambNight = useAudioPlayer(require('./assets/audio/amb_night.mp3'));
+  const wind = useAudioPlayer(require('./assets/audio/amb_wind1.mp3'));
+  const stream = useAudioPlayer(require('./assets/audio/amb_stream.mp3'));
+  const steps = useAudioPlayer(require('./assets/audio/step_soil.mp3'));
+  const cave = useAudioPlayer(require('./assets/audio/amb_cave.mp3'));
+
+  useEffect(() => {
+    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false });
+    for (const [p, v] of [[ambDay, 0.5], [ambNight, 0.55], [wind, 0.3], [stream, 0], [steps, 0.85]]) {
+      p.loop = true;
+      p.volume = v;
+    }
+    cave.volume = 0.55;
+  }, [ambDay, ambNight, wind, stream, steps, cave]);
+
+  useEffect(() => {
+    if (phase !== 'walking') return;
+    if (isNight) { ambDay.pause(); ambNight.play(); }
+    else { ambNight.pause(); ambDay.play(); }
+  }, [isNight, phase, ambDay, ambNight]);
+
+  // 水辺の場面でだけ渓流の音を混ぜる
+  useEffect(() => {
+    stream.volume = SCENES[sceneIndex]?.water ? 0.45 : 0;
+  }, [sceneIndex, stream]);
+
+  useEffect(() => {
+    if (phase !== 'walking' || !isWalking) steps.pause();
+    else steps.play();
+  }, [isWalking, phase, steps]);
+
+  // 菌糸の明滅
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 3200, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 3200, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [pulse]);
+
+  // 歩行中の上下の揺れ
+  useEffect(() => {
+    if (!isWalking) {
+      bob.stopAnimation();
+      Animated.timing(bob, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+      return;
+    }
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bob, { toValue: 1, duration: 420, useNativeDriver: true }),
+        Animated.timing(bob, { toValue: 0, duration: 420, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [isWalking, bob]);
+
+  const say = useCallback((item) => {
+    const text = lineFor(item.type, nightRef.current);
+    speechRef.current = text;
+    setSpeech(text);
+    setPower((p) => Math.min(POWER_MAX, p + POWER_STEP));
+    if (speechTimer.current) clearTimeout(speechTimer.current);
+    speechTimer.current = setTimeout(() => {
+      speechRef.current = null;
+      setSpeech(null);
+    }, readingTime(text));
+  }, []);
+
+  // --- タイトル：口が開いて、吸い込まれる -----------------------------------
+  const enterForest = useCallback(() => {
+    if (phase !== 'title') return;
+    setPhase('opening');
+    cave.seekTo(0);
+    cave.play();
+    setTimeout(() => setMouthFrame(1), 140);
+    setTimeout(() => setMouthFrame(2), 300);
+
+    Animated.parallel([
+      Animated.timing(zoom, { toValue: 20, duration: 1600, useNativeDriver: true }),
+      Animated.timing(curtain, { toValue: 1, duration: 1600, useNativeDriver: true }),
+    ]).start(() => {
+      itemsRef.current = [];
+      walkedRef.current = 0;
+      spawnInRef.current = 1;
+      seqRef.current = 0;
+      exitAtRef.current = EXIT_MIN + Math.random() * (EXIT_MAX - EXIT_MIN);
+      setPower(0);
+      setSceneIndex(0);
+      setSpeech(null);
+      speechRef.current = null;
+      setPhase('walking');
+      Animated.timing(curtain, { toValue: 0, duration: 900, useNativeDriver: true }).start();
+      (nightRef.current ? ambNight : ambDay).play();
+      wind.play();
+    });
+  }, [phase, zoom, curtain, cave, ambDay, ambNight, wind]);
+
+  // --- 歩く -----------------------------------------------------------------
+  useEffect(() => {
+    if (phase !== 'walking') return undefined;
+    let raf;
+    let last = Date.now();
+
+    const frame = () => {
+      const now = Date.now();
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+
+      if (walkingRef.current) {
+        walkedRef.current += dt;
+
+        for (const it of itemsRef.current) {
+          it.z -= WALK_SPEED * dt;
+          // 近づいたら声を掛けてくる。一体につき一度だけ、重ならないように
+          if (!it.spoke && it.z <= SPEAK_AT) {
+            it.spoke = true;
+            if (!speechRef.current) say(it);
+          }
+        }
+        itemsRef.current = itemsRef.current.filter((it) => it.z > Z_NEAR);
+
+        spawnInRef.current -= dt;
+        if (spawnInRef.current <= 0 && itemsRef.current.length < MAX_ALIVE) {
+          spawnInRef.current = SPAWN_EVERY * (0.6 + Math.random());
+          const m = pick(MUSHROOMS);
+          itemsRef.current.push({
+            key: `m${seqRef.current++}`,
+            type: m.type,
+            src: m.src,
+            wx: (Math.random() - 0.5) * 2 * SPREAD,
+            z: Z_FAR,
+            spoke: false,
+          });
+        }
+
+        const progress = walkedRef.current / exitAtRef.current;
+        const next = Math.min(SCENES.length - 1, Math.floor(progress * SCENES.length));
+        setSceneIndex((cur) => (cur === next ? cur : next));
+
+        if (walkedRef.current >= exitAtRef.current) {
+          walkingRef.current = false;
+          setIsWalking(false);
+          setPhase('exit');
+        }
+        redraw();
+      }
+      raf = requestAnimationFrame(frame);
+    };
+
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [phase, say]);
+
+  useEffect(() => () => { if (speechTimer.current) clearTimeout(speechTimer.current); }, []);
+
+  const startWalk = useCallback(() => { walkingRef.current = true; setIsWalking(true); }, []);
+  const stopWalk = useCallback(() => { walkingRef.current = false; setIsWalking(false); }, []);
+
+  const leaveForest = useCallback(() => {
+    for (const p of [ambDay, ambNight, wind, stream, steps]) p.pause();
+    setPhase('ending');
+  }, [ambDay, ambNight, wind, stream, steps]);
+
+  const backToTitle = useCallback(() => {
+    setMouthFrame(0);
+    zoom.setValue(1);
+    curtain.setValue(0);
+    setSpeech(null);
+    speechRef.current = null;
+    setPhase('title');
+  }, [zoom, curtain]);
+
+  // --- 描画 -----------------------------------------------------------------
+  if (phase === 'title' || phase === 'opening') {
+    // 口は画像の縦66%＝中心より16%下にある。拡大は中心基準なので、その分持ち上げる
+    const lift = zoom.interpolate({
+      inputRange: [1, 20],
+      outputRange: [0, -SCREEN_HEIGHT * 0.16 * 19],
+    });
+    return (
+      <View style={styles.container}>
+        <TouchableOpacity activeOpacity={1} style={styles.fill} onPress={enterForest}>
+          <Animated.Image
+            source={TITLE_FRAMES[mouthFrame]}
+            style={[styles.fill, { transform: [{ translateY: lift }, { scale: zoom }] }]}
+            resizeMode="contain"
+          />
+          {phase === 'title' && <Text style={styles.titleHint}>この子の口が入口です</Text>}
+        </TouchableOpacity>
+        <Animated.View pointerEvents="none" style={[styles.curtain, { opacity: curtain }]} />
+      </View>
+    );
+  }
+
+  if (phase === 'ending') {
+    return (
+      <View style={styles.container}>
+        <Image source={require('./assets/ending_okaeri.png')} style={styles.fill} resizeMode="contain" />
+        <TouchableOpacity style={styles.againBtn} onPress={backToTitle} activeOpacity={0.7}>
+          <Text style={styles.againText}>また、山へ</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
+  const glow = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: isNight ? [0.45, 0.9] : [0.08, 0.18],
+  });
+  const nightAlpha = Math.max(0, 0.72 - power * 1.6);
+
+  const cx = SCREEN_WIDTH / 2;
+  const cy = SCREEN_HEIGHT * HORIZON;
+  const drawn = itemsRef.current.map((it) => {
+    const scale = FOCAL / it.z;
+    const size = BASE_SIZE * scale;
+    return { it, size, x: cx + it.wx * scale, y: cy + GROUND * scale };
+  });
+
   return (
     <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
+      <Animated.View style={[styles.fill, { transform: [{ translateY: bobY }] }]}>
+        <Image
+          source={phase === 'exit' ? require('./assets/forest_7_exit.jpg') : SCENES[sceneIndex].src}
+          style={styles.fill}
+          resizeMode="cover"
+        />
+
+        {isNight && <View pointerEvents="none" style={[styles.night, { opacity: nightAlpha }]} />}
+        {!isNight && power > 0 && (
+          <View pointerEvents="none" style={[styles.shine, { opacity: power * 0.7 }]} />
+        )}
+
+        {phase === 'walking' && drawn.map(({ it, size, x, y }) => (
+          <View
+            key={it.key}
+            pointerEvents="none"
+            style={{ position: 'absolute', left: x - size / 2, top: y - size, width: size, height: size }}
+          >
+            <Animated.Image
+              source={require('./assets/mycelium.png')}
+              style={{
+                position: 'absolute',
+                left: -size * 0.5,
+                top: -size * 0.1,
+                width: size * 2,
+                height: size * 2,
+                opacity: glow,
+              }}
+              resizeMode="contain"
+            />
+            <Image source={it.src} style={styles.fill} resizeMode="contain" />
+          </View>
+        ))}
+      </Animated.View>
+
+      {speech && (
+        <View pointerEvents="none" style={styles.speech}>
+          <Text style={styles.speechText}>{speech}</Text>
+        </View>
+      )}
+
+      {phase === 'walking' && (
+        <View
+          style={styles.fill}
+          onStartShouldSetResponder={() => true}
+          onResponderGrant={startWalk}
+          onResponderRelease={stopWalk}
+          onResponderTerminate={stopWalk}
+        >
+          {!isWalking && !speech && (
+            <Text style={styles.hint}>画面を押しているあいだ、森を歩きます</Text>
+          )}
+        </View>
+      )}
+
+      {phase === 'exit' && (
+        <TouchableOpacity style={styles.fill} activeOpacity={1} onPress={leaveForest}>
+          <Text style={styles.exitHint}>森の出口。くぐる</Text>
+        </TouchableOpacity>
+      )}
+
+      <TouchableOpacity style={styles.dayNight} onPress={() => setIsNight((v) => !v)} activeOpacity={0.7}>
+        <Text style={{ fontSize: 22 }}>{isNight ? '🌙' : '🌞'}</Text>
+      </TouchableOpacity>
+
+      <Animated.View pointerEvents="none" style={[styles.curtain, { opacity: curtain }]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+  container: { flex: 1, backgroundColor: '#0b0d09' },
+  fill: { ...StyleSheet.absoluteFillObject, width: undefined, height: undefined },
+  night: { ...StyleSheet.absoluteFillObject, backgroundColor: '#050a19' },
+  shine: { ...StyleSheet.absoluteFillObject, backgroundColor: '#fff6d8' },
+  curtain: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000' },
+
+  titleHint: {
+    position: 'absolute',
+    bottom: 46,
+    alignSelf: 'center',
+    color: 'rgba(60,52,40,0.7)',
+    fontSize: 14,
+    letterSpacing: 2,
   },
+  hint: {
+    position: 'absolute',
+    bottom: 54,
+    alignSelf: 'center',
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    letterSpacing: 1,
+    textShadowColor: '#000',
+    textShadowRadius: 4,
+  },
+  exitHint: {
+    position: 'absolute',
+    bottom: 70,
+    alignSelf: 'center',
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 16,
+    letterSpacing: 3,
+    textShadowColor: '#000',
+    textShadowRadius: 6,
+  },
+  speech: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 120,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 20,
+    backgroundColor: 'rgba(250,248,240,0.93)',
+    zIndex: 60,
+  },
+  speechText: { color: '#2c2a24', fontSize: 18, lineHeight: 26, textAlign: 'center' },
+  dayNight: {
+    position: 'absolute',
+    top: 48,
+    right: 22,
+    padding: 8,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    zIndex: 70,
+  },
+  againBtn: {
+    position: 'absolute',
+    bottom: 56,
+    alignSelf: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 34,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(70,60,45,0.45)',
+  },
+  againText: { color: '#4a4034', fontSize: 16, letterSpacing: 3 },
 });
