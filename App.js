@@ -46,6 +46,27 @@ const SCENES = [
   { src: require('./assets/forest_6_night.jpg'), water: false },
 ];
 
+// タイトルの口。閉じる→少し開く→大きく開く を1枚ずつ見せてから寄る
+const FRAME_MS = 420;        // 1枚を見せる時間
+const ZOOM_MAX = 4.2;        // 寄りすぎると口が判別できなくなる
+const TITLE_W = 1080;
+const TITLE_H = 764;
+const MOUTH_X = 0.502;       // 画像に対する口の位置（実測値）
+const MOUTH_Y = 0.66;
+const HAND_W = 62;           // タップを促す手袋の幅
+
+/** contain で表示したときの、口の画面上の位置を出す。 */
+function mouthOnScreen() {
+  const aspect = TITLE_W / TITLE_H;
+  const w = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT * aspect);
+  const h = w / aspect;
+  return {
+    x: (SCREEN_WIDTH - w) / 2 + w * MOUTH_X,
+    y: (SCREEN_HEIGHT - h) / 2 + h * MOUTH_Y,
+    size: w,
+  };
+}
+
 const TITLE_FRAMES = [
   require('./assets/title_1_closed.png'),
   require('./assets/title_2_open.png'),
@@ -147,6 +168,7 @@ export default function App() {
   const speechTimer = useRef(null);
 
   const bob = useRef(new Animated.Value(0)).current;
+  const tapBounce = useRef(new Animated.Value(0)).current;
   const zoom = useRef(new Animated.Value(1)).current;
   const curtain = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
@@ -186,6 +208,16 @@ export default function App() {
     else steps.play();
   }, [isWalking, phase, steps]);
 
+  // タップを促す指の上下
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tapBounce, { toValue: 1, duration: 620, useNativeDriver: true }),
+        Animated.timing(tapBounce, { toValue: 0, duration: 620, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [tapBounce]);
+
   // 菌糸の明滅
   useEffect(() => {
     Animated.loop(
@@ -224,17 +256,10 @@ export default function App() {
   }, []);
 
   // --- タイトル：口が開いて、吸い込まれる -----------------------------------
-  const enterForest = useCallback(() => {
-    if (phase !== 'title') return;
-    setPhase('opening');
-    cave.seekTo(0);
-    cave.play();
-    setTimeout(() => setMouthFrame(1), 140);
-    setTimeout(() => setMouthFrame(2), 300);
-
+  const zoomIn = useCallback(() => {
     Animated.parallel([
-      Animated.timing(zoom, { toValue: 20, duration: 1600, useNativeDriver: true }),
-      Animated.timing(curtain, { toValue: 1, duration: 1600, useNativeDriver: true }),
+      Animated.timing(zoom, { toValue: ZOOM_MAX, duration: 1400, useNativeDriver: true }),
+      Animated.timing(curtain, { toValue: 1, duration: 1400, useNativeDriver: true }),
     ]).start(() => {
       itemsRef.current = [];
       walkedRef.current = 0;
@@ -250,7 +275,19 @@ export default function App() {
       (nightRef.current ? ambNight : ambDay).play();
       wind.play();
     });
-  }, [phase, zoom, curtain, cave, ambDay, ambNight, wind]);
+  }, [zoom, curtain, ambDay, ambNight, wind]);
+
+  const enterForest = useCallback(() => {
+    if (phase !== 'title') return;
+    setPhase('opening');
+    cave.seekTo(0);
+    cave.play();
+
+    // 口が開くところを1枚ずつ見せてから寄る
+    setMouthFrame(1);
+    setTimeout(() => setMouthFrame(2), FRAME_MS);
+    setTimeout(zoomIn, FRAME_MS * 2);
+  }, [phase, cave, zoomIn]);
 
   // --- 歩く -----------------------------------------------------------------
   useEffect(() => {
@@ -330,19 +367,41 @@ export default function App() {
   // --- 描画 -----------------------------------------------------------------
   if (phase === 'title' || phase === 'opening') {
     // 口は画像の縦66%＝中心より16%下にある。拡大は中心基準なので、その分持ち上げる
+    const mouth = mouthOnScreen();
+    // 口は画像中心より下にある。拡大は中心基準なので、その分だけ持ち上げる
     const lift = zoom.interpolate({
-      inputRange: [1, 20],
-      outputRange: [0, -SCREEN_HEIGHT * 0.16 * 19],
+      inputRange: [1, ZOOM_MAX],
+      outputRange: [0, -(mouth.y - SCREEN_HEIGHT / 2) * (ZOOM_MAX - 1)],
     });
     return (
-      <View style={styles.container}>
+      // タイトル画は白背景の絵。縦長の画面だと上下に余白が出るので、
+      // 画面の地色も白にして絵と地続きに見せる
+      <View style={styles.paper}>
         <TouchableOpacity activeOpacity={1} style={styles.fill} onPress={enterForest}>
           <Animated.Image
             source={TITLE_FRAMES[mouthFrame]}
             style={[styles.fill, { transform: [{ translateY: lift }, { scale: zoom }] }]}
             resizeMode="contain"
           />
-          {phase === 'title' && <Text style={styles.titleHint}>この子の口が入口です</Text>}
+          {phase === 'title' && (
+            // 指先が画像の上端にあるので、指先を口に合わせるだけで位置が決まる
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.tapMark,
+                {
+                  left: mouth.x - HAND_W / 2,
+                  top: mouth.y + 4,
+                  transform: [
+                    { translateY: tapBounce.interpolate({ inputRange: [0, 1], outputRange: [0, 9] }) },
+                  ],
+                },
+              ]}
+            >
+              <Image source={require('./assets/tap_hand.png')} style={styles.tapHand} resizeMode="contain" />
+              <Text style={styles.tapText}>TAP</Text>
+            </Animated.View>
+          )}
         </TouchableOpacity>
         <Animated.View pointerEvents="none" style={[styles.curtain, { opacity: curtain }]} />
       </View>
@@ -351,7 +410,7 @@ export default function App() {
 
   if (phase === 'ending') {
     return (
-      <View style={styles.container}>
+      <View style={styles.paper}>
         <Image source={require('./assets/ending_okaeri.png')} style={styles.fill} resizeMode="contain" />
         <TouchableOpacity style={styles.againBtn} onPress={backToTitle} activeOpacity={0.7}>
           <Text style={styles.againText}>また、山へ</Text>
@@ -449,18 +508,21 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0b0d09' },
-  fill: { ...StyleSheet.absoluteFillObject, width: undefined, height: undefined },
+  paper: { flex: 1, backgroundColor: '#ffffff' },
+  // width/height を省くと react-native-web で大きさが決まらず、何も描かれない
+  fill: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   night: { ...StyleSheet.absoluteFillObject, backgroundColor: '#050a19' },
   shine: { ...StyleSheet.absoluteFillObject, backgroundColor: '#fff6d8' },
   curtain: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000' },
 
-  titleHint: {
-    position: 'absolute',
-    bottom: 46,
-    alignSelf: 'center',
-    color: 'rgba(60,52,40,0.7)',
-    fontSize: 14,
-    letterSpacing: 2,
+  tapMark: { position: 'absolute', width: HAND_W, alignItems: 'center' },
+  tapHand: { width: HAND_W, height: HAND_W * (340 / 260) },
+  tapText: {
+    marginTop: 2,
+    color: 'rgba(58,50,40,0.85)',
+    fontSize: 17,
+    letterSpacing: 4,
+    fontWeight: '600',
   },
   hint: {
     position: 'absolute',
