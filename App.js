@@ -51,8 +51,8 @@ const TITLE_FRAMES = [
 
 const TITLE_W = 1000;
 const TITLE_H = 1414;
-const MOUTH_X = 0.608;
-const MOUTH_Y = 0.6296;
+const MOUTH_X = 0.47;
+const MOUTH_Y = 0.62;
 const HAND_RATIO = 0.075;
 const HAND_TILT = 28;
 const HAND_OFF_X = 0.85;
