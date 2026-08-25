@@ -183,6 +183,13 @@ export default function App() {
   const speechRef = useRef(null);   // 表示中は次を出さない
   const speechTimer = useRef(null);
 
+  // 空間を漂う光の粒（前進感＝オプティカルフローを生むため）
+  const dustRef = useRef(Array.from({ length: 30 }).map(() => ({
+    wx: (Math.random() - 0.5) * SPREAD * 4,
+    wy: (Math.random() - 0.8) * SCREEN_HEIGHT * 1.5,
+    z: Math.random() * Z_FAR,
+  })));
+
   const bob = useRef(new Animated.Value(0)).current;
   const tapBounce = useRef(new Animated.Value(0)).current;
   const zoom = useRef(new Animated.Value(1)).current;
@@ -373,6 +380,16 @@ export default function App() {
           });
         }
 
+        // 光の粒の更新（前進感を強調するため少し速く動かす）
+        for (const d of dustRef.current) {
+          d.z -= WALK_SPEED * dt * 1.5;
+          if (d.z < 2) {
+            d.z = Z_FAR;
+            d.wx = (Math.random() - 0.5) * SPREAD * 4;
+            d.wy = (Math.random() - 0.8) * SCREEN_HEIGHT * 1.5;
+          }
+        }
+
         const progress = walkedRef.current / exitAtRef.current;
         const next = Math.min(SCENES.length - 1, Math.floor(progress * SCENES.length));
         setSceneIndex((cur) => (cur === next ? cur : next));
@@ -472,7 +489,8 @@ export default function App() {
   const totalWalk = exitAtRef.current || 1;
   const progress = Math.max(0, walkedRef.current / totalWalk);
   const localProgress = phase === 'walking' ? (progress * SCENES.length) % 1 : 0;
-  const bgScale = 1.0 + (localProgress * 0.15);
+  // 背景がパン（首振り）しても端が見えないように 1.15 倍スタートにする
+  const bgScale = 1.15 + (localProgress * 0.15);
 
   const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
   const glow = pulse.interpolate({
@@ -481,10 +499,19 @@ export default function App() {
   });
   const nightAlpha = Math.max(0, 0.72 - power * 1.6);
 
-  const cx = SCREEN_WIDTH / 2;
-  const currentHorizon = phase === 'exit' ? 0.68 : SCENES[sceneIndex].horizon;
-  const cy = SCREEN_HEIGHT * currentHorizon;
   const timeSec = Date.now() / 1000; // 呼吸と揺れのための時間
+
+  // --- 3D視差（パララックス）と首振り（パン）の計算 ---
+  // 目線が1点に固定されないよう、ゆっくり首を振る
+  const panX = Math.sin(timeSec * 0.4) * 35; 
+  const panY = Math.sin(timeSec * 0.25) * 15;
+  const currentCx = (SCREEN_WIDTH / 2) + panX;
+  const currentHorizon = phase === 'exit' ? 0.68 : SCENES[sceneIndex].horizon;
+  const currentCy = (SCREEN_HEIGHT * currentHorizon) + panY;
+
+  // 歩行に合わせて体が左右に揺れる（遠くの背景より手前のキノコが大きく動く＝視差）
+  const swayPhase = walkedRef.current * 1.2;
+  const cameraTranslateX = Math.sin(swayPhase) * 45;
 
   // Web専用の環境光ブレンド（周囲の森の色味にキノコをなじませる）
   // 昼は少し彩度を落として暖色を足し、夜は暗くして青みを足す
@@ -504,7 +531,32 @@ export default function App() {
     const breathe = 1.0 + Math.sin(timeSec * 2 + it.wx) * 0.03; 
     const sway = Math.sin(timeSec * 1.5 + it.wx) * 3; // ±3度の揺れ
 
-    return { it, size, x: cx + it.wx * scale, y: cy + GROUND * scale, breathe, sway };
+    // パララックスを適用した画面座標
+    const screenX = currentCx + (it.wx - cameraTranslateX) * scale;
+    const screenY = currentCy + GROUND * scale;
+
+    return { it, size, x: screenX, y: screenY, breathe, sway, sprout };
+  });
+
+  // 前進感を生む光の粒
+  const drawnDust = dustRef.current.map((d, i) => {
+    if (d.z <= 0) return null;
+    const scale = FOCAL / d.z;
+    const screenX = currentCx + (d.wx - cameraTranslateX) * scale;
+    const screenY = currentCy + d.wy * scale;
+    const size = Math.max(2, 5 * scale);
+    let opacity = 1;
+    if (d.z > Z_FAR - 20) opacity = (Z_FAR - d.z) / 20; // 遠くでフェードイン
+    if (d.z < 10) opacity = d.z / 10; // 手前でフェードアウト
+    
+    return (
+      <View key={`dust${i}`} pointerEvents="none" style={{
+        position: 'absolute', left: screenX, top: screenY, width: size, height: size,
+        backgroundColor: isNight ? 'rgba(150, 220, 255, 0.6)' : 'rgba(255, 240, 150, 0.6)',
+        borderRadius: size, opacity,
+        boxShadow: `0 0 ${size}px rgba(255,255,255,0.8)` // 光彩
+      }} />
+    );
   });
 
   return (
@@ -512,7 +564,7 @@ export default function App() {
       <Animated.View style={[styles.fill, { transform: [{ translateY: bobY }] }]}>
         <Image
           source={phase === 'exit' ? require('./assets/forest_7_exit.jpg') : SCENES[sceneIndex].src}
-          style={[styles.fill, { transform: [{ scale: bgScale }] }]}
+          style={[styles.fill, { transform: [{ scale: bgScale }, { translateX: panX }, { translateY: panY }] }]}
           resizeMode="cover"
         />
 
@@ -521,7 +573,19 @@ export default function App() {
           <View pointerEvents="none" style={[styles.shine, { opacity: power * 0.7 }]} />
         )}
 
-        {phase === 'walking' && drawn.map(({ it, size, x, y, breathe, sway }) => (
+        {/* 光の粒を描画 */}
+        {phase === 'walking' && drawnDust}
+      </Animated.View>
+
+      {speech && (
+        <View pointerEvents="none" style={styles.speech}>
+          <Text style={styles.speechText}>{speech}</Text>
+        </View>
+      )}
+
+      {/* キノコは手前に描画し、セリフ枠に足元が隠れないようにする */}
+      <Animated.View pointerEvents="none" style={[styles.fill, { transform: [{ translateY: bobY }] }]}>
+        {phase === 'walking' && drawn.map(({ it, size, x, y, breathe, sway, sprout }) => (
           <View
             key={it.key}
             pointerEvents="none"
@@ -568,12 +632,6 @@ export default function App() {
           </View>
         ))}
       </Animated.View>
-
-      {speech && (
-        <View pointerEvents="none" style={styles.speech}>
-          <Text style={styles.speechText}>{speech}</Text>
-        </View>
-      )}
 
       {phase === 'walking' && (
         <View
