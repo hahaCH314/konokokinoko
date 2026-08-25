@@ -384,7 +384,6 @@ export default function App() {
             resizeMode="contain"
           />
           {phase === 'title' && (
-            // 指先が画像の上端にあるので、指先を口に合わせるだけで位置が決まる
             <Animated.View
               pointerEvents="none"
               style={[
