@@ -5,6 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Billboard, Image as DreiImage, Points, PointMaterial } from '@react-three/drei';
 import * as THREE from 'three';
 
+const getUri = (req) => Image.resolveAssetSource(req).uri;
+
 import LINES from './mushroomLines.json';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -145,7 +147,7 @@ function MushroomBillboard({ item, cameraZ, isNight, onSpeak }) {
 
   return (
     <Billboard position={[item.wx, -3, item.z]} ref={ref}>
-      <DreiImage url={item.src} scale={[8, 8]} transparent depthWrite={false} color={color} />
+      <DreiImage url={getUri(item.src)} scale={[8, 8]} transparent depthWrite={false} color={color} />
       <mesh position={[0, -4, -0.1]}>
         <planeGeometry args={[6, 1.5]} />
         <meshBasicMaterial color="black" transparent opacity={0.4} />
@@ -184,9 +186,9 @@ function BackgroundCrossfade({ sceneIndex, cameraZ, isNight, power, phase }) {
 
   return (
     <group position={[0, 0, bgZ]}>
-      <DreiImage url={currentSrc} scale={[120, 90]} transparent opacity={1} depthWrite={false} />
+      <DreiImage url={getUri(currentSrc)} scale={[120, 90]} transparent opacity={1} depthWrite={false} />
       {nextSrc && (
-        <DreiImage url={nextSrc} scale={[120, 90]} transparent opacity={fade.current} depthWrite={false} />
+        <DreiImage url={getUri(nextSrc)} scale={[120, 90]} transparent opacity={fade.current} depthWrite={false} />
       )}
       
       {isNight && (
