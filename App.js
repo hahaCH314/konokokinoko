@@ -484,13 +484,21 @@ export default function App() {
   const cx = SCREEN_WIDTH / 2;
   const currentHorizon = phase === 'exit' ? 0.68 : SCENES[sceneIndex].horizon;
   const cy = SCREEN_HEIGHT * currentHorizon;
+  const timeSec = Date.now() / 1000; // 呼吸と揺れのための時間
+
   const drawn = itemsRef.current.map((it) => {
     const scale = FOCAL / it.z;
     // 遠く(Z_FAR)から現れるとき、幽霊のように透けるのではなく、
     // 地面から「ニョキッ」と生える（急成長する）ようにサイズを絞る
     const sprout = Math.min(1, Math.max(0, (Z_FAR - it.z) / 20));
     const size = BASE_SIZE * scale * sprout;
-    return { it, size, x: cx + it.wx * scale, y: cy + GROUND * scale };
+    
+    // 生命感（呼吸と揺れ）を計算
+    // キノコごとに動きをずらすため it.wx を位相に使う
+    const breathe = 1.0 + Math.sin(timeSec * 2 + it.wx) * 0.03; 
+    const sway = Math.sin(timeSec * 1.5 + it.wx) * 3; // ±3度の揺れ
+
+    return { it, size, x: cx + it.wx * scale, y: cy + GROUND * scale, breathe, sway };
   });
 
   return (
@@ -507,12 +515,24 @@ export default function App() {
           <View pointerEvents="none" style={[styles.shine, { opacity: power * 0.7 }]} />
         )}
 
-        {phase === 'walking' && drawn.map(({ it, size, x, y }) => (
+        {phase === 'walking' && drawn.map(({ it, size, x, y, breathe, sway }) => (
           <View
             key={it.key}
             pointerEvents="none"
             style={{ position: 'absolute', left: x - size / 2, top: y - size, width: size, height: size }}
           >
+            {/* 足元の影（接地感を出す） */}
+            <View
+              style={{
+                position: 'absolute',
+                left: size * 0.25,
+                top: size * 0.88,
+                width: size * 0.5,
+                height: size * 0.15,
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                borderRadius: size * 0.25,
+              }}
+            />
             <Animated.Image
               source={require('./assets/mycelium.png')}
               style={{
@@ -525,7 +545,12 @@ export default function App() {
               }}
               resizeMode="contain"
             />
-            <Image source={it.src} style={styles.fill} resizeMode="contain" />
+            {/* キノコ本体に呼吸と揺れを適用 */}
+            <Image 
+              source={it.src} 
+              style={[styles.fill, { transform: [{ scaleY: breathe }, { rotate: `${sway}deg` }] }]} 
+              resizeMode="contain" 
+            />
           </View>
         ))}
       </Animated.View>
