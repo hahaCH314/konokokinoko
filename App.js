@@ -20,10 +20,14 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const Z_FAR = 100;
 const Z_NEAR = 15;
 const FOCAL = 15;
-const BASE_SIZE = 300;       // すれ違うときの一辺
-const SPREAD = 230;          // 道の左右への広がり
-const GROUND = 60;           // 消失点から足元までの落差
-const HORIZON = 0.56;        // 消失点の高さ。背景の道の奥に合わせてある
+// 森の写真は、道が画面の 68% あたりで消えている。ここを地平線として扱う。
+// ここがずれると、キノコが地面から浮いて宙に生えているように見える。
+const HORIZON = 0.68;
+// 画面の大きさに対する割合で決める。固定pxだと機種によって別物になる
+const BASE_SIZE = SCREEN_HEIGHT * 0.42;   // すぐ横を通るときの一辺
+const GROUND = SCREEN_HEIGHT * 0.32;      // 地平線から足元までの落差
+const SPREAD = SCREEN_WIDTH * 0.42;       // 道の左右への広がり
+const PATH_CLEAR = 0.38;                  // 道の中央のこの範囲には生やさない
 
 const WALK_SPEED = 18;       // 1秒あたり z がどれだけ減るか
 const SPAWN_EVERY = 1.1;     // 何秒に1体出すか
@@ -52,8 +56,21 @@ const ZOOM_MAX = 4.2;        // 寄りすぎると口が判別できなくなる
 const TITLE_W = 1080;
 const TITLE_H = 764;
 const MOUTH_X = 0.502;       // 画像に対する口の位置（実測値）
-const MOUTH_Y = 0.66;
-const HAND_W = 62;           // タップを促す手袋の幅
+// 閉じた口の位置。開いた口との差分で測ると「穴の中心」＝もっと下を指してしまう。
+// title_1_closed.png の顔の中央で、横に走るいちばん暗い行を探して出した値
+const MOUTH_Y = 0.6296;
+
+// 手の大きさは、画面ではなく「表示されているタイトル画の幅」に対して決める。
+// 固定pxにすると、画像が小さく表示されるスマホで手だけ巨大になる
+const HAND_RATIO = 0.075;
+const HAND_TILT = 28;        // 右へ傾ける角度
+// 画像の指先はおよそ (0.42, 0.12)。中心まわりに HAND_TILT だけ回すと
+// (0.25, 0.20) に移るので、その位置が口に来るよう置く
+const TIP_DX = 0.251;
+const TIP_DY = 0.202;
+// 左手なので口の左下から指す。指先を口の真下ではなく、少し左下に置く
+const HAND_OFF_X = 0.85;
+const HAND_OFF_Y = 0.15;
 
 /** contain で表示したときの、口の画面上の位置を出す。 */
 function mouthOnScreen() {
@@ -259,7 +276,9 @@ export default function App() {
   const zoomIn = useCallback(() => {
     Animated.parallel([
       Animated.timing(zoom, { toValue: ZOOM_MAX, duration: 1400, useNativeDriver: true }),
-      Animated.timing(curtain, { toValue: 1, duration: 1400, useNativeDriver: true }),
+      // curtain は幕を上げるときに JS 側で動かすので、こちらも揃える。
+      // 同じ値にネイティブ駆動とJS駆動を混ぜると実行時に落ちる
+      Animated.timing(curtain, { toValue: 1, duration: 1400, useNativeDriver: false }),
     ]).start(() => {
       itemsRef.current = [];
       walkedRef.current = 0;
@@ -271,11 +290,20 @@ export default function App() {
       setSpeech(null);
       speechRef.current = null;
       setPhase('walking');
-      Animated.timing(curtain, { toValue: 0, duration: 900, useNativeDriver: true }).start();
+      // 幕を上げるのは森の画面が出てから（下の useEffect）。
+      // ここで動かすと、消えるタイトル画面の幕に対して動いてしまい、
+      // 新しく出た森の画面の幕が真っ黒のまま取り残される
       (nightRef.current ? ambNight : ambDay).play();
       wind.play();
     });
   }, [zoom, curtain, ambDay, ambNight, wind]);
+
+  // 森の画面が出てから幕を上げる
+  useEffect(() => {
+    if (phase !== 'walking') return;
+    curtain.setValue(1);
+    Animated.timing(curtain, { toValue: 0, duration: 900, useNativeDriver: false }).start();
+  }, [phase, curtain]);
 
   const enterForest = useCallback(() => {
     if (phase !== 'title') return;
@@ -321,7 +349,9 @@ export default function App() {
             key: `m${seqRef.current++}`,
             type: m.type,
             src: m.src,
-            wx: (Math.random() - 0.5) * 2 * SPREAD,
+            // 道の真ん中には生えない。道端に、左右どちらかに寄せて生やす
+            wx: (Math.random() < 0.5 ? -1 : 1)
+              * (PATH_CLEAR + (1 - PATH_CLEAR) * Math.random()) * SPREAD,
             z: Z_FAR,
             spoke: false,
           });
@@ -366,8 +396,8 @@ export default function App() {
 
   // --- 描画 -----------------------------------------------------------------
   if (phase === 'title' || phase === 'opening') {
-    // 口は画像の縦66%＝中心より16%下にある。拡大は中心基準なので、その分持ち上げる
     const mouth = mouthOnScreen();
+    const handW = mouth.size * HAND_RATIO;   // 表示されている画像の幅に合わせる
     // 口は画像中心より下にある。拡大は中心基準なので、その分だけ持ち上げる
     const lift = zoom.interpolate({
       inputRange: [1, ZOOM_MAX],
@@ -389,18 +419,19 @@ export default function App() {
               style={[
                 styles.tapMark,
                 {
-                  left: mouth.x - HAND_W / 2,
-                  top: mouth.y + 4,
+                  width: handW,
+                  left: mouth.x - handW * (TIP_DX + HAND_OFF_X),
+                  top: mouth.y + handW * (HAND_OFF_Y - TIP_DY),
                   transform: [
                     { translateY: tapBounce.interpolate({ inputRange: [0, 1], outputRange: [0, 9] }) },
                   ],
                 },
               ]}
             >
-              <Image 
-                source={require('./assets/tap_hand.png')} 
-                style={[styles.tapHand, { transform: [{ rotate: '25deg' }] }]} 
-                resizeMode="contain" 
+              <Image
+                source={require('./assets/tap_hand.png')}
+                style={{ width: handW, height: handW, transform: [{ rotate: `${HAND_TILT}deg` }] }}
+                resizeMode="contain"
               />
               <Text style={styles.tapText}>TAP</Text>
             </Animated.View>
@@ -488,9 +519,6 @@ export default function App() {
           onResponderRelease={stopWalk}
           onResponderTerminate={stopWalk}
         >
-          {!isWalking && !speech && (
-            <Text style={styles.hint}>画面を押しているあいだ、森を歩きます</Text>
-          )}
         </View>
       )}
 
@@ -518,14 +546,16 @@ const styles = StyleSheet.create({
   shine: { ...StyleSheet.absoluteFillObject, backgroundColor: '#fff6d8' },
   curtain: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000' },
 
-  tapMark: { position: 'absolute', width: HAND_W, alignItems: 'center' },
-  tapHand: { width: HAND_W, height: HAND_W * (340 / 260) },
+  tapMark: { position: 'absolute', alignItems: 'center' },
   tapText: {
-    marginTop: 2,
-    color: 'rgba(58,50,40,0.85)',
-    fontSize: 17,
+    marginTop: 4,
+    color: 'rgba(58,50,40,0.9)',
+    fontSize: 16,
     letterSpacing: 4,
     fontWeight: '600',
+    // キノコの根元の暗い部分に重なっても読めるように
+    textShadowColor: 'rgba(255,255,255,0.95)',
+    textShadowRadius: 5,
   },
   hint: {
     position: 'absolute',
