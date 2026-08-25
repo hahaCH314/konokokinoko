@@ -397,7 +397,11 @@ export default function App() {
                 },
               ]}
             >
-              <Image source={require('./assets/tap_hand.png')} style={styles.tapHand} resizeMode="contain" />
+              <Image 
+                source={require('./assets/tap_hand.png')} 
+                style={[styles.tapHand, { transform: [{ rotate: '25deg' }] }]} 
+                resizeMode="contain" 
+              />
               <Text style={styles.tapText}>TAP</Text>
             </Animated.View>
           )}
